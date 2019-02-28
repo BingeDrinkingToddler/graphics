@@ -45,6 +45,12 @@ var g_normalMatrix = new Matrix4();  // Coordinate transformation matrix for nor
 var ANGLE_STEP = 3.0;  // The increments of rotation angle (degrees)
 var g_xAngle = 0.0;    // The rotation x angle (degrees)
 var g_yAngle = 0.0;    // The rotation y angle (degrees)
+var oar_rotate = 0; //angle of oars
+var boat_posx = 0.0; //x position of boat
+var boat_posz = 40.0; //z position of boat
+var boat_rotate = 0; //boat rotation
+var boat_direction = true;
+var boat_turning = true;
 
 function main() {
   // Retrieve <canvas> element
@@ -96,7 +102,7 @@ function main() {
   gl.uniform3fv(u_LightDirection, lightDirection.elements);
 
   // Calculate the view matrix and the projection matrix
-  viewMatrix.setLookAt(0, 50, 170, 10, 0, 0, 0, 1, 0);
+  viewMatrix.setLookAt(70, 100, 190, 10, 0, 0, 0, 1, 0);
   projMatrix.setPerspective(30, canvas.width/canvas.height, 1, 400);
   // Pass the model, view, and projection matrix to the uniform variable respectively
   gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
@@ -155,6 +161,70 @@ function initVertexBufferstri(gl) {
     0.8, 0.52, 0.25,  0.8, 0.52, 0.25,  0.8, 0.52, 0.25, 0.8, 0.52, 0.25,     // v0-v3-v4-v1 left
     0.8, 0.52, 0.25,   0.8, 0.52, 0.25,   0.8, 0.52, 0.25,  0.8, 0.52, 0.25,    // v1-v2-v5-v4 back
     0.8, 0.52, 0.25,  0.8, 0.52, 0.25,   0.8, 0.52, 0.25     //v3-v4-v5 top
+ ]);
+
+
+  var normals = new Float32Array([    // Normal
+    0.0, -1.0, 0.0,   0.0, -1.0, 0.0,  0.0, -1.0, 0.0,  // v0-v1-v2 base
+    -0.5, 0.0, 0.866,   -0.5, 0.0, 0.866,   -0.5, 0.0, 0.866,   -0.5, 0.0, 0.866,  // v0-v3-v5-v2 right
+    0.5, 0.0, 0.866,   0.5, 0.0, 0.866,   0.5, 0.0, 0.866,   0.5, 0.0, 0.866,  //  v0-v3-v4-v1 left
+    0.0, 0.0, -1.0,  0.0, 0.0, -1.0,  0.0, 0.0, -1.0,  0.0, 0.0, -1.0,  // v1-v2-v5-v4 back
+    0.0,1.0, 0.0,   0.0,1.0, 0.0,    0.0,1.0, 0.0   // v3-v4-v5 top
+  ]);
+
+
+  // Indices of the vertices
+  var indices = new Uint8Array([
+   0,1,2, //base 0 1 2
+   3,4,6,  4,5,6, //right 3 4 5 6
+   7,8,10, 8,9,10, //left 7 8 9 10
+   11,12,14,  12,13,14, //back 11 12 13 14
+    15,16,17//top 15 16 17
+ ]);
+
+
+  // Write the vertex property to buffers (coordinates, colors and normals)
+  if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+
+  // Write the indices to the buffer object
+  var indexBuffer = gl.createBuffer();
+  if (!indexBuffer) {
+    console.log('Failed to create the buffer object');
+    return false;
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  return indices.length;
+}
+
+function initVertexBufferstribrown(gl) {
+  // Create a triangular prism
+  //    
+  //     v4----v5
+  //     |\    /|
+  //     |  v3  |
+  //     v1-|--v2  
+  //      \ |  /
+  //        v0
+  var vertices = new Float32Array([   // Coordinates
+     0.0,-0.5,0.577,  -0.5,-0.5,-0.289,  0.5,-0.5,-0.289,// v0-v1-v2 base
+     0.0,-0.5,0.577,  0.0,0.5,0.577,  0.5,0.5,-0.289,   0.5,-0.5,-0.289,  // v0-v3-v5-v2 right
+     0.0,-0.5,0.577,  0.0,0.5,0.577,   -0.5,0.5,-0.289,  -0.5,-0.5,-0.289,//v0-v3-v4-v1 left
+     -0.5,-0.5,-0.289,  0.5,-0.5,-0.289,  0.5,0.5,-0.289,  -0.5,0.5,-0.289,//v1-v2-v5-v4 back
+     0.0,0.5,0.577,  -0.5,0.5,-0.289,  0.5,0.5,-0.289//v3-v4-v5 top
+  ]);
+
+
+  var colors = new Float32Array([    // Colors
+    0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,     // v0-v1-v2 base
+    0.410, 0.304, 0.172,   0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,    // v0-v3-v5-v2 right
+    0.410, 0.304, 0.172,   0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,     // v0-v3-v4-v1 left
+    0.410, 0.304, 0.172,   0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,     // v1-v2-v5-v4 back
+    0.410, 0.304, 0.172,  0.410, 0.304, 0.172,   0.410, 0.304, 0.172,    //v3-v4-v5 top
  ]);
 
 
@@ -337,6 +407,84 @@ function initVertexBuffershex(gl) {
   return indices.length;
 }
 
+function initVertexBuffershexbrown(gl) {
+  // Create a haxagonal prism
+  //
+  //      v10---v9
+  //    /  |    |  \
+  //  v11  |    |  v8
+  //   | \v4----v3/ |
+  //   | /v6----v7\ |    
+  //   v5 |      | v2   
+  //    \ |      | / 
+  //      v0----v1
+  var vertices = new Float32Array([   // Coordinates
+     0.0,-0.5,0.0,  -0.5,-0.5, 0.866,  0.5,-0.5,0.866,  1.0,-0.5,0.0,  0.5,-0.5,-0.866,  -0.5,-0.5,-0.866,  -1.0,-0.5,0.0, //c-v0-v1-v2-v3-v4-v5 base
+     -0.5,-0.5,0.866,  -0.5,0.5,0.866,  0.5,0.5,0.866,  0.5,-0.5,0.866,   //v0-v6-v7-v1 front
+    -1.0,-0.5,0.0,  -1.0,0.5,0.0,   -0.5,0.5,0.866,  -0.5,-0.5, 0.866, //v5-v11-v6-v0 front left
+    -1.0,-0.5,0.0,  -1.0,0.5,0.0,  -0.5,0.5,-0.866,   -0.5,-0.5,-0.866,  //v5-v11-v10-v4 back left
+    -0.5,-0.5,-0.866,  0.5,-0.5,-0.866,  0.5,0.5,-0.866,  -0.5,0.5,-0.866,  //v4-v3-v9-v10 back
+    0.5,-0.5,-0.866,  0.5,0.5,-0.866,  1.0,0.5,0.0,  1.0,-0.5,0.0,  //v3-v9-v8-v2 back right
+    1.0,-0.5,0.0,  1.0,0.5,0.0,  0.5,0.5,0.866, 0.5,-0.5,0.866, //v2-v8-v7-v1 front right
+    0.0,0.5,0.0,  -0.5,0.5,0.866,  0.5,0.5,0.866,  1.0,0.5,0.0,  0.5,0.5,-0.866,   -0.5,0.5,-0.866,  -1.0,0.5,0.0 //c-v6-v7-v8-v9-10-v11 top
+  ]);
+
+
+  var colors = new Float32Array([    // Colors
+    0.8, 0.52, 0.25,   0.8, 0.52, 0.25,    0.8, 0.52, 0.25, 0.8, 0.52, 0.25,  0.8, 0.52, 0.25,  0.8, 0.52, 0.25,  0.8, 0.52, 0.25,   // c-v0-v1-v2-v3-v4-v5 base
+    0.8, 0.52, 0.25,   0.8, 0.52, 0.25,  0.8, 0.52, 0.25, 0.8, 0.52, 0.25,     // v0-v6-v7-v1 front
+    0.8, 0.52, 0.25,   0.8, 0.52, 0.25,  0.8, 0.52, 0.25, 0.8, 0.52, 0.25,      // v5-v11-v6-v0 front left
+    0.8, 0.52, 0.25,   0.8, 0.52, 0.25,  0.8, 0.52, 0.25, 0.8, 0.52, 0.25,     // v5-v11-v10-v4 back left
+    0.8, 0.52, 0.25,   0.8, 0.52, 0.25,  0.8, 0.52, 0.25, 0.8, 0.52, 0.25,     // v4-v3-v9-v10 back
+    0.8, 0.52, 0.25,   0.8, 0.52, 0.25,  0.8, 0.52, 0.25, 0.8, 0.52, 0.25,    // v3-v9-v8-v2 back right
+    0.8, 0.52, 0.25,   0.8, 0.52, 0.25,  0.8, 0.52, 0.25, 0.8, 0.52, 0.25,     // v2-v8-v7-v1 front right
+    0.8, 0.52, 0.25,     0.8, 0.52, 0.25,    0.8, 0.52, 0.25,    0.8, 0.52, 0.25,　 0.8, 0.52, 0.25,   0.8, 0.52, 0.25,   0.8, 0.52, 0.25, // c-v6-v7-v8-v9-v10-v11 top
+ ]);
+
+
+  var normals = new Float32Array([    // Normal
+    0.0, -1.0, 0.0,   0.0, -1.0, 0.0,   0.0, -1.0, 0.0,   0.0, -1.0, 0.0,  0.0, -1.0, 0.0,   0.0, -1.0, 0.0,  0.0, -1.0, 0.0,//c-v0-v1-v2-v3-v4-v5 base
+    0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,  // v0-v6-v7-v1 front
+    -0.5, 0.0, 0.866,  -0.5, 0.0, 0.866,   -0.5, 0.0, 0.866,  -0.5, 0.0, 0.866,  // v5-v11-v6-v0 front left
+    -0.5, 0.0, -0.866,  -0.5, 0.0, -0.866,  -0.5, 0.0, -0.866,  -0.5, 0.0, -0.866,  // //v5-v11-v10-v4 back left
+    0.0,0.0, -1.0,   0.0,0.0, -1.0,   0.0,0.0, -1.0,   0.0,0.0, -1.0,  // //v4-v3-v9-v10 back
+    0.5, 0.0,-0.866,  0.5, 0.0,-0.866,   0.5, 0.0,-0.866,  0.5, 0.0,-0.866,  //v3-v9-v8-v2 back right
+    0.5, 0.0,0.866,   0.5, 0.0,0.866,   0.5, 0.0,0.866,   0.5, 0.0,0.866,  // v2-v8-v7-v1 front right
+    0.0, 1.0,0.0,   0.0, 1.0,0.0,    0.0, 1.0,0.0,    0.0, 1.0,0.0,  0.0,1.0,0.0,  0.0,1.0,0.0,  0.0,1.0,0.0 // v6-v7-v8-v9-10-v11 top
+  ]);
+
+
+  // Indices of the vertices
+  var indices = new Uint8Array([
+     0,1,2,  0,2,3,  0,3,4,  0,4,5,  0,5,6,  0,1,6, //base
+     7,8,10, 8,9,10,//front 7 8 9 10
+     11,12,14,  12,13,14, //front left 11 12 13 14
+     15,16,18, 16,17,18,//back left 15 16 17 18
+     19,20,22, 20,21,22,//back 19 20 21 22
+     23,24,26, 24,25,26,//back right 23 24 25 26
+     27,28,30, 28,29,30,//front right 27 28 29 30
+     31,32,33, 31,33,34, 31,34,35, 31,35,36, 31,36,37,  31,37,32//top 31 32 33 34 35 36 37
+ ]);
+
+
+  // Write the vertex property to buffers (coordinates, colors and normals)
+  if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+
+  // Write the indices to the buffer object
+  var indexBuffer = gl.createBuffer();
+  if (!indexBuffer) {
+    console.log('Failed to create the buffer object');
+    return false;
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  return indices.length;
+}
+
 function initVertexBuffers(gl) {
   // Create a cube
   //    v6----- v5
@@ -405,6 +553,73 @@ function initVertexBuffers(gl) {
   return indices.length;
 }
 
+function initVertexBuffersCubeBrown(gl) {
+  // Create a cube
+  //    v6----- v5
+  //   /|      /|
+  //  v1------v0|
+  //  | |     | |
+  //  | |v7---|-|v4
+  //  |/      |/
+  //  v2------v3
+  var vertices = new Float32Array([   // Coordinates
+     0.5, 0.5, 0.5,  -0.5, 0.5, 0.5,  -0.5,-0.5, 0.5,   0.5,-0.5, 0.5, // v0-v1-v2-v3 front
+     0.5, 0.5, 0.5,   0.5,-0.5, 0.5,   0.5,-0.5,-0.5,   0.5, 0.5,-0.5, // v0-v3-v4-v5 right
+     0.5, 0.5, 0.5,   0.5, 0.5,-0.5,  -0.5, 0.5,-0.5,  -0.5, 0.5, 0.5, // v0-v5-v6-v1 up
+    -0.5, 0.5, 0.5,  -0.5, 0.5,-0.5,  -0.5,-0.5,-0.5,  -0.5,-0.5, 0.5, // v1-v6-v7-v2 left
+    -0.5,-0.5,-0.5,   0.5,-0.5,-0.5,   0.5,-0.5, 0.5,  -0.5,-0.5, 0.5, // v7-v4-v3-v2 down
+     0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,  -0.5, 0.5,-0.5,   0.5, 0.5,-0.5  // v4-v7-v6-v5 back
+  ]);
+
+
+  var colors = new Float32Array([    // Colors
+    0.410, 0.304, 0.172,   0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,     // v0-v1-v2-v3 front
+    0.410, 0.304, 0.172,   0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,    // v0-v3-v4-v5 right
+    0.410, 0.304, 0.172,   0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,     // v0-v5-v6-v1 up
+    0.410, 0.304, 0.172,   0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,     // v1-v6-v7-v2 left
+    0.410, 0.304, 0.172,   0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,    // v7-v4-v3-v2 down
+    0.410, 0.304, 0.172,   0.410, 0.304, 0.172, 0.410, 0.304, 0.172, 0.410, 0.304, 0.172,　    // v4-v7-v6-v5 back
+ ]);
+
+
+  var normals = new Float32Array([    // Normal
+    0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,  // v0-v1-v2-v3 front
+    1.0, 0.0, 0.0,   1.0, 0.0, 0.0,   1.0, 0.0, 0.0,   1.0, 0.0, 0.0,  // v0-v3-v4-v5 right
+    0.0, 1.0, 0.0,   0.0, 1.0, 0.0,   0.0, 1.0, 0.0,   0.0, 1.0, 0.0,  // v0-v5-v6-v1 up
+   -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  // v1-v6-v7-v2 left
+    0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,  // v7-v4-v3-v2 down
+    0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // v4-v7-v6-v5 back
+  ]);
+
+
+  // Indices of the vertices
+  var indices = new Uint8Array([
+     0, 1, 2,   0, 2, 3,    // front
+     4, 5, 6,   4, 6, 7,    // right
+     8, 9,10,   8,10,11,    // up
+    12,13,14,  12,14,15,    // left
+    16,17,18,  16,18,19,    // down
+    20,21,22,  20,22,23     // back
+ ]);
+
+
+  // Write the vertex property to buffers (coordinates, colors and normals)
+  if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+
+  // Write the indices to the buffer object
+  var indexBuffer = gl.createBuffer();
+  if (!indexBuffer) {
+    console.log('Failed to create the buffer object');
+    return false;
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  return indices.length;
+}
 
 function initVertexBuffersCubeBlue(gl) {
   // Create a cube
@@ -653,15 +868,14 @@ function draw(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
   // Clear color and depth buffer
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  gl.uniform1i(u_isLighting, false); // Will not apply lighting
-
-  // Set the vertex coordinates and color (for the x, y axes)
-
   
   gl.uniform1i(u_isLighting, true); // Will apply lighting
 
-  // Set the vertex coordinates and color (for the cube)
-  
+  var cube = initVertexBuffers(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
 
   // Rotate, and then translate
   modelMatrix.setTranslate(0, 0, 0);  // Translation (No translation is supported here)
@@ -785,19 +999,359 @@ function draw(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
   }
 
   //walls
+
+  //back right
   pushMatrix(modelMatrix);
-    modelMatrix.translate(21.75,15.5,-5.5);
+    modelMatrix.translate(21.75,14.25,-5.5);
     modelMatrix.rotate(90,1,0,0);
-    modelMatrix.scale(18.5, 0.6, 5);
+    modelMatrix.scale(12, 0.6, 2.5);
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
   modelMatrix = popMatrix();
 
   pushMatrix(modelMatrix);
-    modelMatrix.translate(21.75,15.5,5.5);
+  modelMatrix.translate(21.75,17.75,-5.5);
+  modelMatrix.rotate(90,1,0,0);
+  modelMatrix.scale(12, 0.6, 0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(14.5,15.5,-5.5);
     modelMatrix.rotate(90,1,0,0);
-    modelMatrix.scale(18.5, 0.6, 5);
+    modelMatrix.scale(4, 0.6, 5);
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
   modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(29,15.5,-5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(4, 0.6, 5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  var cube = initVertexBuffershexbrown(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(17.25,16.5,-5.5);
+  modelMatrix.scale(0.35, 3, 0.35);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(18.75,16.5,-5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(20.25,16.5,-5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(21.75,16.5,-5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(23.25,16.5,-5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(24.75,16.5,-5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(26.25,16.5,-5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+
+
+  var cube = initVertexBuffers(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  //front right
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(21.75,14.25,5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(12, 0.6, 2.5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(21.75,17.75,5.5);
+  modelMatrix.rotate(90,1,0,0);
+  modelMatrix.scale(12, 0.6, 0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(14.5,15.5,5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(4, 0.6, 5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(29,15.5,5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(4, 0.6, 5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  var cube = initVertexBuffershexbrown(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(17.25,16.5,5.5);
+  modelMatrix.scale(0.35, 3, 0.35);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(18.75,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(20.25,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(21.75,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(23.25,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(24.75,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(26.25,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+
+
+  var cube = initVertexBuffers(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(-43.5,0,0);
+
+  //front right
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(21.75,14.25,5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(12, 0.6, 2.5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(21.75,17.75,5.5);
+  modelMatrix.rotate(90,1,0,0);
+  modelMatrix.scale(12, 0.6, 0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(14.5,15.5,5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(4, 0.6, 5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(29,15.5,5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(4, 0.6, 5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  var cube = initVertexBuffershexbrown(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(17.25,16.5,5.5);
+  modelMatrix.scale(0.35, 3, 0.35);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(18.75,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(20.25,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(21.75,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(23.25,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(24.75,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(26.25,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+
+
+  var cube = initVertexBuffers(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  
+  modelMatrix.translate(0,0,-11);
+
+  //back left
+  
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(21.75,14.25,5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(12, 0.6, 2.5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(21.75,17.75,5.5);
+  modelMatrix.rotate(90,1,0,0);
+  modelMatrix.scale(12, 0.6, 0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(14.5,15.5,5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(4, 0.6, 5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(29,15.5,5.5);
+    modelMatrix.rotate(90,1,0,0);
+    modelMatrix.scale(4, 0.6, 5);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  var cube = initVertexBuffershexbrown(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(17.25,16.5,5.5);
+  modelMatrix.scale(0.35, 3, 0.35);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(18.75,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(20.25,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(21.75,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(23.25,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(24.75,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+    modelMatrix.translate(26.25,16.5,5.5);
+    modelMatrix.scale(0.35, 3, 0.35);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+
+
+  var cube = initVertexBuffers(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  modelMatrix.translate(43.5,0,10);
+  modelMatrix = popMatrix();
+
+  //front middle
 
   pushMatrix(modelMatrix);
     modelMatrix.translate(0,15.5,5.5);
@@ -806,26 +1360,13 @@ function draw(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
   modelMatrix = popMatrix();
 
+  //back middle
   pushMatrix(modelMatrix);
   modelMatrix.translate(0,15.5,-5.5);
   modelMatrix.rotate(90,1,0,0);
   modelMatrix.scale(14, 0.6, 5);
   drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
 modelMatrix = popMatrix();
-
-pushMatrix(modelMatrix);
-    modelMatrix.translate(-21.75,15.5,-5.5);
-    modelMatrix.rotate(90,1,0,0);
-    modelMatrix.scale(18.5, 0.6, 5);
-    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
-  modelMatrix = popMatrix();
-
-  pushMatrix(modelMatrix);
-    modelMatrix.translate(-21.75,15.5,5.5);
-    modelMatrix.rotate(90,1,0,0);
-    modelMatrix.scale(18.5, 0.6, 5);
-    drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
-  modelMatrix = popMatrix();
 
 
   pushMatrix(modelMatrix);
@@ -1528,7 +2069,7 @@ var cube = initVertexBuffersCubeBlue(gl);
   modelMatrix = popMatrix();
 
   pushMatrix(modelMatrix);
-  modelMatrix.translate(10,0,0);
+  modelMatrix.translate(10,-1,0);
   modelMatrix.scale(103,5,100);
   drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
   modelMatrix = popMatrix();
@@ -3985,6 +4526,268 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
   modelMatrix = popMatrix();
+
+  var cube = initVertexBuffershex(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(-16,-3,2);
+  modelMatrix.rotate(-75,0,0,1);
+  modelMatrix.rotate(90,0,1,0);
+
+  //trunk
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(0,10,0);
+  modelMatrix.scale(1,15,1);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(0.8,20,-0.3);
+  modelMatrix.rotate(-10,0,0,1);
+  modelMatrix.scale(0.5,5,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(0,18.5,1);
+  modelMatrix.rotate(20,1,0,0);
+  modelMatrix.scale(0.5,2,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(-0.7,19.5,-0.5);
+  modelMatrix.rotate(120,0,1,0);
+  modelMatrix.rotate(-15,0,0,1);
+  modelMatrix.scale(0.5,4,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+
+  //2nd lowest branch
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(-2.5,13,0);
+  modelMatrix.rotate(60,0,0,1);
+  modelMatrix.scale(0.5,5,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(-4.75,16.25,0.75);
+  modelMatrix.rotate(20,1,0,0);
+  modelMatrix.rotate(5,0,0,1);
+  modelMatrix.scale(0.5,5,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+
+  //lowest branch
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(1.5,11,-1.25);
+  modelMatrix.rotate(40,0,1,0);
+  modelMatrix.rotate(-60,0,0,1);
+  modelMatrix.scale(0.5,3,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(2.25,12.75,-2.5);
+  modelMatrix.rotate(-30,1,0,0);
+  modelMatrix.rotate(40,0,1,0);
+  modelMatrix.rotate(10,0,0,1);
+  modelMatrix.scale(0.5,3,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(1.5,15.5,-3);
+  modelMatrix.rotate(-5,1,0,0);
+  modelMatrix.rotate(40,0,1,0);
+  modelMatrix.rotate(20,0,0,1);
+  modelMatrix.scale(0.3,3,0.3);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(2.75,16,-3);
+  modelMatrix.rotate(20,1,0,0);
+  modelMatrix.rotate(40,0,1,0);
+  modelMatrix.rotate(-20,0,0,1);
+  modelMatrix.scale(0.3,4,0.3);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  //middle branch
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(0,15,2);
+  modelMatrix.rotate(90,0,1,0);
+  modelMatrix.rotate(40,0,0,1);
+  modelMatrix.scale(0.5,4,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(0,17.75,3.25);
+  modelMatrix.rotate(90,0,1,0);
+  modelMatrix.scale(0.5,3,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  //2nd highsest branch
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(-1.5,15,-1.5);
+  modelMatrix.rotate(-45,0,1,0);
+  modelMatrix.rotate(50,0,0,1);
+  modelMatrix.scale(0.5,4,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(-2.5,18,-2.5);
+  modelMatrix.rotate(-45,0,1,0);
+  modelMatrix.rotate(-5,0,0,1);
+  modelMatrix.scale(0.5,4,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  //highest branch
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(1.5,17,1);
+  modelMatrix.rotate(-40,0,1,0);
+  modelMatrix.rotate(-50,0,0,1);
+  modelMatrix.scale(0.5,6,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(3.35,20.65,2.5);
+  modelMatrix.rotate(-40,0,1,0);
+  modelMatrix.rotate(-5,0,0,1);
+  modelMatrix.scale(0.5,4,0.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  modelMatrix = popMatrix();
+
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(boat_posx,4,boat_posz);
+  modelMatrix.rotate(boat_rotate,0,1,0);
+
+  var cube = initVertexBufferstribrown(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+  //boat
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(10,-1,-3.5);
+  modelMatrix.rotate(180,0,1,0);
+  modelMatrix.scale(2,1.5,2.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(10,-1,3.5);
+  modelMatrix.scale(2,1.5,2.5);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  var cube = initVertexBuffersCubeBrown(gl);
+  if (cube < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+  
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(10.75,-1,0);
+  modelMatrix.scale(0.5,1.5,5.75);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(9.25,-1,0);
+  modelMatrix.scale(0.5,1.5,5.75);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(10,-1.25,0);
+  modelMatrix.scale(2,1,5.75);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.rotate(oar_rotate,1,0,0);
+
+//right oar
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(11.75,0,0);
+  modelMatrix.rotate(-25,0,0,1);
+  modelMatrix.scale(3,0.25,0.25);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(13.5,-0.75,0);
+  modelMatrix.rotate(-25,0,0,1);
+  modelMatrix.scale(1,1,0.25);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+//left oar
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(8.25,0,0);
+  modelMatrix.rotate(25,0,0,1);
+  modelMatrix.scale(3,0.25,0.25);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  pushMatrix(modelMatrix);
+  modelMatrix.translate(6.5,-0.75,0);
+  modelMatrix.rotate(25,0,0,1);
+  modelMatrix.scale(1,1,0.25);
+  drawbox(gl, u_ModelMatrix, u_NormalMatrix, cube);
+  modelMatrix = popMatrix();
+
+  modelMatrix = popMatrix();
+
+  modelMatrix = popMatrix();
+
+  if(boat_direction == true){
+    if (boat_posz > -21){
+    boat_posz = boat_posz -0.5;
+    }
+  }
+  if(boat_direction == false){
+    if(boat_posz <30){
+      boat_posz = boat_posz +0.5;
+    }
+  }
+  
+  if (boat_posz <-20 && boat_direction == true){
+    boat_rotate += 5;
+    if(boat_rotate == 180){
+      boat_direction = false;
+    }
+  }
+  if(boat_posz > 29 && boat_direction == false){
+    boat_rotate += 5;
+    if(boat_rotate == 360){
+      boat_direction = true;
+      boat_rotate = 0;
+    }
+  }
+
+  oar_rotate = (oar_rotate-15)%360;
+  
+      
+  requestAnimationFrame(function(){draw(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting)});
+  
 }
 
 function drawbox(gl, u_ModelMatrix, u_NormalMatrix, n) {
