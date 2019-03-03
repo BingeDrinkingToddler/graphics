@@ -4770,13 +4770,13 @@ var cube = initVertexBufferstrigreen(gl);
   }
   
   if (boat_posz <-20 && boat_direction == true){
-    boat_rotate += 5;
+    boat_rotate += 2.5;
     if(boat_rotate == 180){
       boat_direction = false;
     }
   }
   if(boat_posz > 29 && boat_direction == false){
-    boat_rotate += 5;
+    boat_rotate += 2.5;
     if(boat_rotate == 360){
       boat_direction = true;
       boat_rotate = 0;
