@@ -51,6 +51,7 @@ var boat_posz = 40.0; //z position of boat
 var boat_rotate = 0; //boat rotation
 var boat_direction = true;
 var boat_turning = true;
+var then = 0;
 
 function main() {
   // Retrieve <canvas> element
@@ -113,7 +114,7 @@ function main() {
     keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
   };
 
-  draw(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
+  draw(0,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
 }
 
 function keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
@@ -134,7 +135,7 @@ function keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
   }
 
   // Draw the scene
-  draw(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
+  draw(0,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
 
 }
 function initVertexBufferstri(gl) {
@@ -863,7 +864,7 @@ function popMatrix() { // Retrieve the matrix from the array
   return g_matrixStack.pop();
 }
 
-function draw(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
+function draw(now,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
 
   // Clear color and depth buffer
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -4758,35 +4759,40 @@ var cube = initVertexBufferstrigreen(gl);
 
   modelMatrix = popMatrix();
 
+  now *= 0.01
+  var delta_time = now - then;
+  then = now;
+
   if(boat_direction == true){
     if (boat_posz > -21){
-    boat_posz = boat_posz -0.5;
+    boat_posz = boat_posz -(1*delta_time);
     }
   }
   if(boat_direction == false){
     if(boat_posz <30){
-      boat_posz = boat_posz +0.5;
+      boat_posz = boat_posz +(1*delta_time);
     }
   }
   
   if (boat_posz <-20 && boat_direction == true){
-    boat_rotate += 2.5;
-    if(boat_rotate == 180){
+    boat_rotate += (2.5*delta_time);
+    if(boat_rotate > 180){
+      boat_rotate = 180;
       boat_direction = false;
     }
   }
   if(boat_posz > 29 && boat_direction == false){
-    boat_rotate += 2.5;
-    if(boat_rotate == 360){
+    boat_rotate += (2.5*delta_time);
+    if(boat_rotate > 360){
       boat_direction = true;
       boat_rotate = 0;
     }
   }
 
-  oar_rotate = (oar_rotate-15)%360;
+  oar_rotate = (oar_rotate-(15*delta_time))%360;
   
       
-  requestAnimationFrame(function(){draw(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting)});
+  requestAnimationFrame(function(now){draw(now,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting)});
   
 }
 
