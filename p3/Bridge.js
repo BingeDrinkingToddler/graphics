@@ -1,41 +1,51 @@
 // Directional lighting demo: By Frederick Li
 // Vertex shader program
-var VSHADER_SOURCE =
-  'attribute vec4 a_Position;\n' +
+var VSHADER_SOURCE = 
+'attribute vec4 a_Position;\n' +
   'attribute vec4 a_Color;\n' +
-  'attribute vec4 a_Normal;\n' +        // Normal
+  'attribute vec2 a_texcoords;\n' + //TEXTURE
+  'attribute vec4 a_Normal;\n' +          // Normal
   'uniform mat4 u_ModelMatrix;\n' +
   'uniform mat4 u_NormalMatrix;\n' +
   'uniform mat4 u_ViewMatrix;\n' +
   'uniform mat4 u_ProjMatrix;\n' +
   'uniform vec3 u_LightColor;\n' +     // Light color
   'uniform vec3 u_LightDirection;\n' + // Light direction (in the world coordinate, normalized)
+  'varying vec3 v_Lighting;\n' +
+  'varying vec2 v_TexCoords;\n' + //TEXTURE
   'varying vec4 v_Color;\n' +
   'uniform bool u_isLighting;\n' +
   'void main() {\n' +
   '  gl_Position = u_ProjMatrix * u_ViewMatrix * u_ModelMatrix * a_Position;\n' +
   '  if(u_isLighting)\n' + 
   '  {\n' +
-  '     vec3 normal = normalize((u_NormalMatrix * a_Normal).xyz);\n' +
-  '     float nDotL = max(dot(normal, u_LightDirection), 0.0);\n' +
-        // Calculate the color due to diffuse reflection
-  '     vec3 diffuse = u_LightColor * a_Color.rgb * nDotL;\n' +
-  '     v_Color = vec4(diffuse, a_Color.a);\n' +  '  }\n' +
+  'vec3 ambientLight = vec3(0.3, 0.3, 0.3);\n'+
+  'vec3 directionalLightColor = vec3(1,1,1);\n'+
+  'vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));\n'+
+  'vec3 normal = normalize((u_NormalMatrix * a_Normal).xyz);\n'+
+  'float directional = max(dot(normal,u_LightDirection), 0.0);\n'+
+  'v_Lighting = ambientLight + (directionalLightColor * directional);\n' +
+  ' vec3 diffuse = u_LightColor * a_Color.rgb * directional;\n' +
+  '     v_TexCoords = a_texcoords;\n' +  //TEXTURE
+  '   v_Color = vec4(diffuse,a_Color.a);\n' +
+  '  }\n' +
   '  else\n' +
   '  {\n' +
-  '     v_Color = a_Color;\n' +
+    ' v_Color = a_Color;\n' +
+  '     v_TexCoords = a_texcoords;\n' + //TEXTURE
   '  }\n' + 
   '}\n';
 
-// Fragment shader program
 var FSHADER_SOURCE =
-  '#ifdef GL_ES\n' +
-  'precision mediump float;\n' +
-  '#endif\n' +
-  'varying vec4 v_Color;\n' +
-  'void main() {\n' +
-  '  gl_FragColor = v_Color;\n' +
-  '}\n';
+'precision mediump float;\n' +
+'varying vec3 v_Lighting;\n'+
+'varying vec2 v_TexCoords;\n' + //TEXTURE
+'varying vec4 v_Color;\n'+
+'uniform sampler2D sampler;\n' +
+'void main() {\n' +
+'vec4 texelColor = texture2D(sampler, v_TexCoords);\n'+ //TEXTURE
+'gl_FragColor = vec4(texelColor.rgb * v_Lighting, texelColor.a);\n'+ //TEXTURE
+'}\n';
 
 var modelMatrix = new Matrix4(); // The model matrix
 var viewMatrix = new Matrix4();  // The view matrix
@@ -53,6 +63,14 @@ var boat_direction = true;
 var boat_turning = true;
 var then = 0;
 
+var brick;
+var boat;
+var grass;
+var leaves;
+var road;
+var tree;
+var water;
+
 function main() {
   // Retrieve <canvas> element
   var canvas = document.getElementById('webgl');
@@ -63,6 +81,35 @@ function main() {
     console.log('Failed to get the rendering context for WebGL');
     return;
   }
+
+ brick = gl.createTexture();
+ brick.image = new Image();
+ brick.image.src = "../Textures/brick.jpg";
+
+ boat = gl.createTexture();
+ boat.image = new Image();
+ boat.image.src = "../Textures/boat.jpg";
+
+ grass = gl.createTexture();
+ grass.image = new Image();
+ grass.image.src = "../Textures/grass.jpg";
+
+ leaves = gl.createTexture();
+ leaves.image = new Image();
+ leaves.image.src = "../Textures/leaves.jpg";
+
+ road = gl.createTexture();
+ road.image = new Image();
+ road.image.src = "../Textures/road.jpg";
+
+
+ tree = gl.createTexture();
+ tree.image = new Image();
+ tree.image.src = "../Textures/tree.jpg";
+
+ water = gl.createTexture();
+ water.image = new Image();
+ water.image.src = "../Textures/water.jpg";
 
   // Initialize shaders
   if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
@@ -173,6 +220,14 @@ function initVertexBufferstri(gl) {
     0.0,1.0, 0.0,   0.0,1.0, 0.0,    0.0,1.0, 0.0   // v3-v4-v5 top
   ]);
 
+  var texCoords = new Float32Array([
+    0.5, 1.0,   0.0, 0.0,   1.0, 0.0, // v0-v1-v2 base
+    0.0, 0.0,   0.0, 1.0,   1.0, 1.0,   1.0, 0.0, // v0-v3-v5-v2 right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, //  v0-v3-v4-v1 left
+    1.0, 0.0,   0.0, 0.0,   0.0, 1.0,   1.0, 1.0, // v1-v2-v5-v4 back
+    0.5, 1.0,   1.0, 0.0,   0.0, 0.0 // v3-v4-v5 top
+  ]);
+
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -198,6 +253,15 @@ function initVertexBufferstri(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  gl.bindTexture(gl.TEXTURE_2D, brick);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, brick.image);
+  
+  gl.activeTexture(gl.TEXTURE0);
 
   return indices.length;
 }
@@ -237,6 +301,13 @@ function initVertexBufferstribrown(gl) {
     0.0,1.0, 0.0,   0.0,1.0, 0.0,    0.0,1.0, 0.0   // v3-v4-v5 top
   ]);
 
+  var texCoords = new Float32Array([
+    0.5, 1.0,   0.0, 0.0,   1.0, 0.0, // v0-v1-v2 base
+    0.0, 0.0,   0.0, 1.0,   1.0, 1.0,   1.0, 0.0, // v0-v3-v5-v2 right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, //  v0-v3-v4-v1 left
+    1.0, 0.0,   0.0, 0.0,   0.0, 1.0,   1.0, 1.0, // v1-v2-v5-v4 back
+    0.5, 1.0,   1.0, 0.0,   0.0, 0.0 // v3-v4-v5 top
+  ]);
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -252,6 +323,7 @@ function initVertexBufferstribrown(gl) {
   if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -262,6 +334,15 @@ function initVertexBufferstribrown(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  gl.bindTexture(gl.TEXTURE_2D, boat);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, boat.image);
+  
+  gl.activeTexture(gl.TEXTURE0);
 
   return indices.length;
 }
@@ -301,6 +382,13 @@ function initVertexBufferstrigreen(gl) {
     0.0,1.0, 0.0,   0.0,1.0, 0.0,    0.0,1.0, 0.0   // v3-v4-v5 top
   ]);
 
+  var texCoords = new Float32Array([
+    0.5, 1.0,   0.0, 0.0,   1.0, 0.0, // v0-v1-v2 base
+    0.0, 0.0,   0.0, 1.0,   1.0, 1.0,   1.0, 0.0, // v0-v3-v5-v2 right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, //  v0-v3-v4-v1 left
+    1.0, 0.0,   0.0, 0.0,   0.0, 1.0,   1.0, 1.0, // v1-v2-v5-v4 back
+    0.5, 1.0,   1.0, 0.0,   0.0, 0.0 // v3-v4-v5 top
+  ]);
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -316,6 +404,7 @@ function initVertexBufferstrigreen(gl) {
   if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -326,6 +415,16 @@ function initVertexBufferstrigreen(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+
+  gl.bindTexture(gl.TEXTURE_2D, grass);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, grass.image);
+ 
+  gl.activeTexture(gl.TEXTURE0);
 
   return indices.length;
 }
@@ -369,11 +468,22 @@ function initVertexBuffershex(gl) {
     0.0, -1.0, 0.0,   0.0, -1.0, 0.0,   0.0, -1.0, 0.0,   0.0, -1.0, 0.0,  0.0, -1.0, 0.0,   0.0, -1.0, 0.0,  0.0, -1.0, 0.0,//c-v0-v1-v2-v3-v4-v5 base
     0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,  // v0-v6-v7-v1 front
     -0.5, 0.0, 0.866,  -0.5, 0.0, 0.866,   -0.5, 0.0, 0.866,  -0.5, 0.0, 0.866,  // v5-v11-v6-v0 front left
-    -0.5, 0.0, -0.866,  -0.5, 0.0, -0.866,  -0.5, 0.0, -0.866,  -0.5, 0.0, -0.866,  // //v5-v11-v10-v4 back left
+    -0.5, 0.0, -0.866,  -0.5, 0.0, -0.866,  -0.5, 0.0, -0.866,  -0.5, 0.0, -0.866,  //v5-v11-v10-v4 back left
     0.0,0.0, -1.0,   0.0,0.0, -1.0,   0.0,0.0, -1.0,   0.0,0.0, -1.0,  // //v4-v3-v9-v10 back
     0.5, 0.0,-0.866,  0.5, 0.0,-0.866,   0.5, 0.0,-0.866,  0.5, 0.0,-0.866,  //v3-v9-v8-v2 back right
     0.5, 0.0,0.866,   0.5, 0.0,0.866,   0.5, 0.0,0.866,   0.5, 0.0,0.866,  // v2-v8-v7-v1 front right
     0.0, 1.0,0.0,   0.0, 1.0,0.0,    0.0, 1.0,0.0,    0.0, 1.0,0.0,  0.0,1.0,0.0,  0.0,1.0,0.0,  0.0,1.0,0.0 // v6-v7-v8-v9-10-v11 top
+  ]);
+
+  var texCoords = new Float32Array([
+   0.5,0.5,   0.25, 0.0,  0.75, 0.0,   1.0, 0.5,   0.75, 1.0,   0.25, 1.0,   0.0, 0.5,  //c-v0-v1-v2-v3-v4-v5 base
+   0.0, 0.0,   0.0, 1.0,   1.0, 1.0,   1.0, 0.0, // v0-v6-v7-v1 front
+   0.0, 0.0,   0.0, 1.0,   1.0, 1.0,   1.0, 0.0, // v5-v11-v6-v0 front left
+   1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, //v5-v11-v10-v4 back left
+   1.0, 0.0,   0.0, 0.0,   0.0, 1.0,   1.0, 1.0, //v4-v3-v9-v10 back
+   1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, //v3-v9-v8-v2 back right
+   1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, // v2-v8-v7-v1 front right
+   0.5, 0.5,   0.25, 0.0,  0.75, 0.0,   1.0, 0.5,   0.75, 1.0,   0.25, 1.0,   0.0, 0.5// c-v6-v7-v8-v9-v10-v11 top
   ]);
 
 
@@ -394,6 +504,7 @@ function initVertexBuffershex(gl) {
   if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -404,6 +515,17 @@ function initVertexBuffershex(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+ 
+  gl.bindTexture(gl.TEXTURE_2D, tree);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tree.image);
+  
+  gl.activeTexture(gl.TEXTURE0);
+
 
   return indices.length;
 }
@@ -442,6 +564,7 @@ function initVertexBuffershexbrown(gl) {
     0.8, 0.52, 0.25,     0.8, 0.52, 0.25,    0.8, 0.52, 0.25,    0.8, 0.52, 0.25,　 0.8, 0.52, 0.25,   0.8, 0.52, 0.25,   0.8, 0.52, 0.25, // c-v6-v7-v8-v9-v10-v11 top
  ]);
 
+ 
 
   var normals = new Float32Array([    // Normal
     0.0, -1.0, 0.0,   0.0, -1.0, 0.0,   0.0, -1.0, 0.0,   0.0, -1.0, 0.0,  0.0, -1.0, 0.0,   0.0, -1.0, 0.0,  0.0, -1.0, 0.0,//c-v0-v1-v2-v3-v4-v5 base
@@ -454,6 +577,17 @@ function initVertexBuffershexbrown(gl) {
     0.0, 1.0,0.0,   0.0, 1.0,0.0,    0.0, 1.0,0.0,    0.0, 1.0,0.0,  0.0,1.0,0.0,  0.0,1.0,0.0,  0.0,1.0,0.0 // v6-v7-v8-v9-10-v11 top
   ]);
 
+  var texCoords = new Float32Array([
+    0.5,0.5,   0.25, 0.0,  0.75, 0.0,   1.0, 0.5,   0.75, 1.0,   0.25, 1.0,   0.0, 0.5,  //c-v0-v1-v2-v3-v4-v5 base
+    0.0, 0.0,   0.0, 1.0,   1.0, 1.0,   1.0, 0.0, // v0-v6-v7-v1 front
+    0.0, 0.0,   0.0, 1.0,   1.0, 1.0,   1.0, 0.0, // v5-v11-v6-v0 front left
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, //v5-v11-v10-v4 back left
+    1.0, 0.0,   0.0, 0.0,   0.0, 1.0,   1.0, 1.0, //v4-v3-v9-v10 back
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, //v3-v9-v8-v2 back right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, // v2-v8-v7-v1 front right
+    0.5, 0.5,   0.25, 0.0,  0.75, 0.0,   1.0, 0.5,   0.75, 1.0,   0.25, 1.0,   0.0, 0.5// c-v6-v7-v8-v9-v10-v11 top
+   ]);
+ 
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -472,6 +606,8 @@ function initVertexBuffershexbrown(gl) {
   if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
+  
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -482,6 +618,17 @@ function initVertexBuffershexbrown(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  
+  gl.bindTexture(gl.TEXTURE_2D, brick);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, brick.image);
+  
+  gl.activeTexture(gl.TEXTURE0);
+
 
   return indices.length;
 }
@@ -524,6 +671,15 @@ function initVertexBuffers(gl) {
     0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // v4-v7-v6-v5 back
   ]);
 
+  var texCoords = new Float32Array([
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v0-v1-v2-v3 front
+    0.0, 1.0,   0.0, 0.0,   1.0, 0.0,   1.0, 1.0, // v0-v3-v4-v5 right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, // v0-v5-v6-v1 up
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v1-v6-v7-v2 left
+    0.0, 0.0,   1.0, 0.0,   1.0, 1.0,   0.0, 1.0, // v7-v4-v3-v2 down
+    0.0, 0.0,   1.0, 0.0,   0.0, 1.0,   1.0, 1.0 // v4-v7-v6-v5 back
+  ]);
+
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -540,6 +696,7 @@ function initVertexBuffers(gl) {
   if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -550,6 +707,17 @@ function initVertexBuffers(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+
+ 
+  gl.bindTexture(gl.TEXTURE_2D, brick);
+   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, brick.image);
+   
+   gl.activeTexture(gl.TEXTURE0);
 
   return indices.length;
 }
@@ -592,6 +760,14 @@ function initVertexBuffersCubeBrown(gl) {
     0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // v4-v7-v6-v5 back
   ]);
 
+  var texCoords = new Float32Array([
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v0-v1-v2-v3 front
+    0.0, 1.0,   0.0, 0.0,   1.0, 0.0,   1.0, 1.0, // v0-v3-v4-v5 right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, // v0-v5-v6-v1 up
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v1-v6-v7-v2 left
+    0.0, 0.0,   1.0, 0.0,   1.0, 1.0,   0.0, 1.0, // v7-v4-v3-v2 down
+    0.0, 0.0,   1.0, 0.0,   0.0, 1.0,   1.0, 1.0 // v4-v7-v6-v5 back
+  ]);
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -608,6 +784,7 @@ function initVertexBuffersCubeBrown(gl) {
   if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -618,6 +795,17 @@ function initVertexBuffersCubeBrown(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+
+  gl.bindTexture(gl.TEXTURE_2D, boat);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, boat.image);
+ 
+  gl.activeTexture(gl.TEXTURE0);
+
 
   return indices.length;
 }
@@ -660,6 +848,14 @@ function initVertexBuffersCubeBlue(gl) {
     0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // v4-v7-v6-v5 back
   ]);
 
+  var texCoords = new Float32Array([
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v0-v1-v2-v3 front
+    0.0, 1.0,   0.0, 0.0,   1.0, 0.0,   1.0, 1.0, // v0-v3-v4-v5 right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, // v0-v5-v6-v1 up
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v1-v6-v7-v2 left
+    0.0, 0.0,   1.0, 0.0,   1.0, 1.0,   0.0, 1.0, // v7-v4-v3-v2 down
+    0.0, 0.0,   1.0, 0.0,   0.0, 1.0,   1.0, 1.0 // v4-v7-v6-v5 back
+  ]);
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -676,6 +872,7 @@ function initVertexBuffersCubeBlue(gl) {
   if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -686,6 +883,16 @@ function initVertexBuffersCubeBlue(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  gl.bindTexture(gl.TEXTURE_2D, water);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, water.image);
+  
+  gl.activeTexture(gl.TEXTURE0);
+
 
   return indices.length;
 }
@@ -728,6 +935,14 @@ function initVertexBuffersCubeMud(gl) {
     0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // v4-v7-v6-v5 back
   ]);
 
+  var texCoords = new Float32Array([
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v0-v1-v2-v3 front
+    0.0, 1.0,   0.0, 0.0,   1.0, 0.0,   1.0, 1.0, // v0-v3-v4-v5 right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, // v0-v5-v6-v1 up
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v1-v6-v7-v2 left
+    0.0, 0.0,   1.0, 0.0,   1.0, 1.0,   0.0, 1.0, // v7-v4-v3-v2 down
+    0.0, 0.0,   1.0, 0.0,   0.0, 1.0,   1.0, 1.0 // v4-v7-v6-v5 back
+  ]);
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -744,6 +959,7 @@ function initVertexBuffersCubeMud(gl) {
   if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -754,6 +970,17 @@ function initVertexBuffersCubeMud(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+  
+  
+  gl.bindTexture(gl.TEXTURE_2D, grass);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, grass.image);
+  
+  gl.activeTexture(gl.TEXTURE0);
+
 
   return indices.length;
 }
@@ -797,6 +1024,14 @@ function initVertexBuffersCubegrey(gl) {
     0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // v4-v7-v6-v5 back
   ]);
 
+  var texCoords = new Float32Array([
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v0-v1-v2-v3 front
+    0.0, 1.0,   0.0, 0.0,   1.0, 0.0,   1.0, 1.0, // v0-v3-v4-v5 right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, // v0-v5-v6-v1 up
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v1-v6-v7-v2 left
+    0.0, 0.0,   1.0, 0.0,   1.0, 1.0,   0.0, 1.0, // v7-v4-v3-v2 down
+    0.0, 0.0,   1.0, 0.0,   0.0, 1.0,   1.0, 1.0 // v4-v7-v6-v5 back
+  ]);
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -813,6 +1048,7 @@ function initVertexBuffersCubegrey(gl) {
   if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -823,6 +1059,107 @@ function initVertexBuffersCubegrey(gl) {
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  
+
+  gl.bindTexture(gl.TEXTURE_2D, road);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, road.image);
+  
+  gl.activeTexture(gl.TEXTURE0);
+
+
+  return indices.length;
+}
+
+function initVertexBuffersCubeleaf(gl) {
+  // Create a cube
+  //    v6----- v5
+  //   /|      /|
+  //  v1------v0|
+  //  | |     | |
+  //  | |v7---|-|v4
+  //  |/      |/
+  //  v2------v3
+  var vertices = new Float32Array([   // Coordinates
+     0.5, 0.5, 0.5,  -0.5, 0.5, 0.5,  -0.5,-0.5, 0.5,   0.5,-0.5, 0.5, // v0-v1-v2-v3 front
+     0.5, 0.5, 0.5,   0.5,-0.5, 0.5,   0.5,-0.5,-0.5,   0.5, 0.5,-0.5, // v0-v3-v4-v5 right
+     0.5, 0.5, 0.5,   0.5, 0.5,-0.5,  -0.5, 0.5,-0.5,  -0.5, 0.5, 0.5, // v0-v5-v6-v1 up
+    -0.5, 0.5, 0.5,  -0.5, 0.5,-0.5,  -0.5,-0.5,-0.5,  -0.5,-0.5, 0.5, // v1-v6-v7-v2 left
+    -0.5,-0.5,-0.5,   0.5,-0.5,-0.5,   0.5,-0.5, 0.5,  -0.5,-0.5, 0.5, // v7-v4-v3-v2 down
+     0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,  -0.5, 0.5,-0.5,   0.5, 0.5,-0.5  // v4-v7-v6-v5 back
+  ]);
+
+
+  var colors = new Float32Array([    // Colors
+    0.525, 0.533, 0.541,   0.525, 0.533, 0.541, 0.525, 0.533, 0.541,   0.525, 0.533, 0.541,     // v0-v1-v2-v3 front
+    0.525, 0.533, 0.541,   0.525, 0.533, 0.541, 0.525, 0.533, 0.541,   0.525, 0.533, 0.541,    // v0-v3-v4-v5 right
+    0.525, 0.533, 0.541,   0.525, 0.533, 0.541, 0.525, 0.533, 0.541,   0.525, 0.533, 0.541,     // v0-v5-v6-v1 up
+    0.525, 0.533, 0.541,   0.525, 0.533, 0.541, 0.525, 0.533, 0.541,   0.525, 0.533, 0.541,    // v1-v6-v7-v2 left
+    0.525, 0.533, 0.541,   0.525, 0.533, 0.541, 0.525, 0.533, 0.541,   0.525, 0.533, 0.541,    // v7-v4-v3-v2 down
+    0.525, 0.533, 0.541,   0.525, 0.533, 0.541, 0.525, 0.533, 0.541,   0.525, 0.533, 0.541,　    // v4-v7-v6-v5 back
+ ]);
+
+
+  var normals = new Float32Array([    // Normal
+    0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,  // v0-v1-v2-v3 front
+    1.0, 0.0, 0.0,   1.0, 0.0, 0.0,   1.0, 0.0, 0.0,   1.0, 0.0, 0.0,  // v0-v3-v4-v5 right
+    0.0, 1.0, 0.0,   0.0, 1.0, 0.0,   0.0, 1.0, 0.0,   0.0, 1.0, 0.0,  // v0-v5-v6-v1 up
+   -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  // v1-v6-v7-v2 left
+    0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,  // v7-v4-v3-v2 down
+    0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // v4-v7-v6-v5 back
+  ]);
+
+  var texCoords = new Float32Array([
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v0-v1-v2-v3 front
+    0.0, 1.0,   0.0, 0.0,   1.0, 0.0,   1.0, 1.0, // v0-v3-v4-v5 right
+    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,   0.0, 0.0, // v0-v5-v6-v1 up
+    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,   1.0, 0.0, // v1-v6-v7-v2 left
+    0.0, 0.0,   1.0, 0.0,   1.0, 1.0,   0.0, 1.0, // v7-v4-v3-v2 down
+    0.0, 0.0,   1.0, 0.0,   0.0, 1.0,   1.0, 1.0 // v4-v7-v6-v5 back
+  ]);
+
+  // Indices of the vertices
+  var indices = new Uint8Array([
+     0, 1, 2,   0, 2, 3,    // front
+     4, 5, 6,   4, 6, 7,    // right
+     8, 9,10,   8,10,11,    // up
+    12,13,14,  12,14,15,    // left
+    16,17,18,  16,18,19,    // down
+    20,21,22,  20,22,23     // back
+ ]);
+
+
+  // Write the vertex property to buffers (coordinates, colors and normals)
+  if (!initArrayBuffer(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer(gl, 'a_texcoords', texCoords, 2, gl.FLOAT)) return -1;
+
+  // Write the indices to the buffer object
+  var indexBuffer = gl.createBuffer();
+  if (!indexBuffer) {
+    console.log('Failed to create the buffer object');
+    return false;
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+  
+
+  gl.bindTexture(gl.TEXTURE_2D, leaves);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, leaves.image);
+ 
+  gl.activeTexture(gl.TEXTURE0);
+
 
   return indices.length;
 }
@@ -2244,7 +2581,7 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
 
-  var cube = initVertexBuffersCubeMud(gl);
+  var cube = initVertexBuffersCubeleaf(gl);
   if (cube < 0) {
     console.log('Failed to set the vertex information');
     return;
@@ -2547,7 +2884,7 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
 
-  var cube = initVertexBuffersCubeMud(gl);
+  var cube = initVertexBuffersCubeleaf(gl);
   if (cube < 0) {
     console.log('Failed to set the vertex information');
     return;
@@ -2852,7 +3189,7 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
 
-  var cube = initVertexBuffersCubeMud(gl);
+  var cube = initVertexBuffersCubeleaf(gl);
   if (cube < 0) {
     console.log('Failed to set the vertex information');
     return;
@@ -3155,7 +3492,7 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
 
-  var cube = initVertexBuffersCubeMud(gl);
+  var cube = initVertexBuffersCubeleaf(gl);
   if (cube < 0) {
     console.log('Failed to set the vertex information');
     return;
@@ -3458,7 +3795,7 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
 
-  var cube = initVertexBuffersCubeMud(gl);
+  var cube = initVertexBuffersCubeleaf(gl);
   if (cube < 0) {
     console.log('Failed to set the vertex information');
     return;
@@ -3761,7 +4098,7 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
 
-  var cube = initVertexBuffersCubeMud(gl);
+  var cube = initVertexBuffersCubeleaf(gl);
   if (cube < 0) {
     console.log('Failed to set the vertex information');
     return;
@@ -4064,7 +4401,7 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
 
-  var cube = initVertexBuffersCubeMud(gl);
+  var cube = initVertexBuffersCubeleaf(gl);
   if (cube < 0) {
     console.log('Failed to set the vertex information');
     return;
@@ -4368,7 +4705,7 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
 
-  var cube = initVertexBuffersCubeMud(gl);
+  var cube = initVertexBuffersCubeleaf(gl);
   if (cube < 0) {
     console.log('Failed to set the vertex information');
     return;
@@ -4766,11 +5103,17 @@ var cube = initVertexBufferstrigreen(gl);
   if(boat_direction == true){
     if (boat_posz > -21){
     boat_posz = boat_posz -(1*delta_time);
+    if (boat_posz < -21) {
+      boat_posz = -21
+    }
     }
   }
   if(boat_direction == false){
     if(boat_posz <30){
       boat_posz = boat_posz +(1*delta_time);
+      if (boat_posz > 30) {
+        boat_posz = 30
+      }
     }
   }
   
