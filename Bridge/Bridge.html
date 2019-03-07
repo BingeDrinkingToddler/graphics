@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="Bridge.css">
+    <title>Bridge</title>
+  </head>
+
+  <body onload="main()">
+    <div class="container">
+      <canvas id="webgl" width="1000px" height="800px">
+      Please use a browser that supports "canvas"
+      </canvas>
+      <div>
+      press 'a' to pause animation,
+      </div>
+      <div>
+      arrows to rotate scene
+      </div>
+      <div>
+      best to pause animation before rotating
+      </div>
+    </div>
+
+    <script src="../lib/webgl-utils.js"></script>
+    <script src="../lib/webgl-debug.js"></script>
+    <script src="../lib/cuon-utils.js"></script>
+    <script src="../lib/cuon-matrix.js"></script>
+    <script src="./Bridge.js"></script>
+  </body>
+</html>

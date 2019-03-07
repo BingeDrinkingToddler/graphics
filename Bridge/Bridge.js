@@ -62,7 +62,8 @@ var boat_rotate = 0; //boat rotation
 var boat_direction = true;
 var boat_turning = true;
 var then = 0;
-
+var animate = true;
+var animation;
 var brick;
 var boat;
 var grass;
@@ -150,7 +151,7 @@ function main() {
   gl.uniform3fv(u_LightDirection, lightDirection.elements);
 
   // Calculate the view matrix and the projection matrix
-  viewMatrix.setLookAt(70, 100, 190, 10, 0, 0, 0, 1, 0);
+  viewMatrix.setLookAt(70, 120, 200, 10, 0, 0, 0, 1, 0);
   projMatrix.setPerspective(30, canvas.width/canvas.height, 1, 400);
   // Pass the model, view, and projection matrix to the uniform variable respectively
   gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
@@ -178,11 +179,20 @@ function keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
     case 37: // Left arrow key -> the negative rotation of arm1 around the y-axis
       g_yAngle = (g_yAngle - ANGLE_STEP) % 360;
       break;
+    case 65:
+      if (animate == true){
+        animate = false;
+      }
+      else {
+        animate = true;
+        first = true;
+        draw(0,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
+      }
     default: return; // Skip drawing at no effective action
   }
 
   // Draw the scene
-  draw(0,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
+    draw(0,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
 
 }
 function initVertexBufferstri(gl) {
@@ -5096,46 +5106,53 @@ var cube = initVertexBufferstrigreen(gl);
 
   modelMatrix = popMatrix();
 
-  now *= 0.01
-  var delta_time = now - then;
-  then = now;
+  if (animate == true){
 
-  if(boat_direction == true){
-    if (boat_posz > -21){
-    boat_posz = boat_posz -(1*delta_time);
-    if (boat_posz < -21) {
-      boat_posz = -21
-    }
-    }
-  }
-  if(boat_direction == false){
-    if(boat_posz <30){
-      boat_posz = boat_posz +(1*delta_time);
-      if (boat_posz > 30) {
-        boat_posz = 30
+   
+   
+    
+
+    if(boat_direction == true){
+      if (boat_posz > -21){
+      boat_posz = boat_posz -(0.75);
+      if (boat_posz < -21) {
+        boat_posz = -21
+      }
       }
     }
-  }
-  
-  if (boat_posz <-20 && boat_direction == true){
-    boat_rotate += (2.5*delta_time);
-    if(boat_rotate > 180){
-      boat_rotate = 180;
-      boat_direction = false;
+    if(boat_direction == false){
+      if(boat_posz <30){
+        boat_posz = boat_posz +(0.75);
+        if (boat_posz > 30) {
+          boat_posz = 30
+        }
+      }
     }
-  }
-  if(boat_posz > 29 && boat_direction == false){
-    boat_rotate += (2.5*delta_time);
-    if(boat_rotate > 360){
-      boat_direction = true;
-      boat_rotate = 0;
+    
+    if (boat_posz <-20 && boat_direction == true){
+      boat_rotate += (2.5);
+      if(boat_rotate > 180){
+        boat_rotate = 180;
+        boat_direction = false;
+      }
     }
-  }
+    if(boat_posz > 29 && boat_direction == false){
+      boat_rotate += (2.5);
+      if(boat_rotate > 360){
+        boat_direction = true;
+        boat_rotate = 0;
+      }
+    }
 
-  oar_rotate = (oar_rotate-(15*delta_time))%360;
-  
-      
-  requestAnimationFrame(function(now){draw(now,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting)});
+    oar_rotate = (oar_rotate-(15))%360;
+  }
+        
+   animation = requestAnimationFrame(function(now){draw(now,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting)});
+
+   if (animate == false){
+     cancelAnimationFrame(animation);
+   }
+ 
   
 }
 
