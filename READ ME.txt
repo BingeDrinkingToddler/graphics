@@ -1,0 +1,14 @@
+How to run:
+- Open chrome with command chrome.exe --allow-file-access-from-files
+- In the folder named Bridge run chrome document or search https://prebends-bridge.herokuapp.com
+Or
+- right click on chrome document and open with Microsoft Edge
+Or
+- open Microsoft Edge and search https://prebends-bridge.herokuapp.com
+
+Features:
+Model has a Row boat that is animated, the animation can be paused by pressing 'a'
+The model can be rotated using the arrow keys but only when the animation is paused so
+there is better performance.
+
+The Browser that gives best performance is Microsoft Edge.

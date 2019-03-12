@@ -151,7 +151,7 @@ function main() {
   gl.uniform3fv(u_LightDirection, lightDirection.elements);
 
   // Calculate the view matrix and the projection matrix
-  viewMatrix.setLookAt(70, 120, 200, 10, 0, 0, 0, 1, 0);
+  viewMatrix.setLookAt(50, 80, 150, 10, 0, 8, 0, 1, 0);
   projMatrix.setPerspective(30, canvas.width/canvas.height, 1, 400);
   // Pass the model, view, and projection matrix to the uniform variable respectively
   gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
@@ -167,17 +167,25 @@ function main() {
 
 function keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
   switch (ev.keyCode) {
-    case 40: // Up arrow key -> the positive rotation of arm1 around the y-axis
-      g_xAngle = (g_xAngle + ANGLE_STEP) % 360;
+    case 40:
+      if (animate == false){ // Up arrow key -> the positive rotation of arm1 around the y-axis
+        g_xAngle = (g_xAngle + ANGLE_STEP) % 360;
+      }
       break;
-    case 38: // Down arrow key -> the negative rotation of arm1 around the y-axis
+    case 38:
+    if (animate == false){ // Down arrow key -> the negative rotation of arm1 around the y-axis
       g_xAngle = (g_xAngle - ANGLE_STEP) % 360;
+    }
       break;
-    case 39: // Right arrow key -> the positive rotation of arm1 around the y-axis
+    case 39:
+    if (animate == false){ // Right arrow key -> the positive rotation of arm1 around the y-axis
       g_yAngle = (g_yAngle + ANGLE_STEP) % 360;
+    }
       break;
-    case 37: // Left arrow key -> the negative rotation of arm1 around the y-axis
+    case 37:
+    if (animate == false){ // Left arrow key -> the negative rotation of arm1 around the y-axis
       g_yAngle = (g_yAngle - ANGLE_STEP) % 360;
+    }
       break;
     case 65:
       if (animate == true){
@@ -185,14 +193,15 @@ function keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
       }
       else {
         animate = true;
-        first = true;
         draw(0,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
       }
     default: return; // Skip drawing at no effective action
   }
 
   // Draw the scene
+  if (animate == false){
     draw(0,gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
+  }
 
 }
 function initVertexBufferstri(gl) {
@@ -5107,10 +5116,6 @@ var cube = initVertexBufferstrigreen(gl);
   modelMatrix = popMatrix();
 
   if (animate == true){
-
-   
-   
-    
 
     if(boat_direction == true){
       if (boat_posz > -21){
